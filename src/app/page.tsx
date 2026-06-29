@@ -39,7 +39,15 @@ export default function HomePage() {
     if (!email || !password || !fullName || !businessName || !trade || !phone) return toast.error(t('fill_all'))
     setSubmitting(true)
     const { data, error } = await supabase.auth.signUp({ email, password })
-    if (error) { toast.error(error.message); setSubmitting(false); return }
+if (error) {
+  if (error.status === 429) {
+    toast.error('Demasiados intentos. Espera 5 minutos.')
+  } else {
+    toast.error(error.message)
+  }
+  setSubmitting(false)
+  return
+}
     if (data.user) {
       await supabase.from('profiles').insert({
         id: data.user.id, full_name: fullName, business_name: businessName,
