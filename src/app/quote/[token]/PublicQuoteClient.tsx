@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { loadStripe } from '@stripe/stripe-js'
 import { CheckCircle, XCircle, Wrench } from 'lucide-react'
@@ -15,13 +15,32 @@ type Quote = {
   profile: { business_name: string; trade: string; phone: string; full_name: string }
 }
 
-export default function PublicQuoteClient({ quote }: { quote: Quote }) {
-  const [status, setStatus] = useState(quote.status)
+export default function PublicQuoteClient({ token }: { token: string }) {
+  const [quote, setQuote] = useState<Quote | null>(null)
+  const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(false)
+  const [notFound, setNotFound] = useState(false)
+  const [fetching, setFetching] = useState(true)
+
+  useEffect(() => {
+    supabase.from('quotes')
+      .select('*, client:clients(name), profile:profiles(business_name, trade, phone, full_name)')
+      .eq('public_token', token)
+      .single()
+      .then(({ data }) => {
+        if (!data) setNotFound(true)
+        else {
+          setQuote(data as unknown as Quote)
+          setStatus(data.status)
+        }
+        setFetching(false)
+      })
+  }, [token])
 
   const fmt = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD' }).format(n)
 
   const handleAccept = async () => {
+    if (!quote) return
     setLoading(true)
     await supabase.from('quotes').update({ status: 'accepted' }).eq('id', quote.id)
     setStatus('accepted')
@@ -29,6 +48,7 @@ export default function PublicQuoteClient({ quote }: { quote: Quote }) {
   }
 
   const handleReject = async () => {
+    if (!quote) return
     setLoading(true)
     await supabase.from('quotes').update({ status: 'rejected' }).eq('id', quote.id)
     setStatus('rejected')
@@ -36,6 +56,7 @@ export default function PublicQuoteClient({ quote }: { quote: Quote }) {
   }
 
   const handlePay = async () => {
+    if (!quote) return
     setLoading(true)
     try {
       const res = await fetch('/api/create-checkout', {
@@ -51,6 +72,24 @@ export default function PublicQuoteClient({ quote }: { quote: Quote }) {
     }
     setLoading(false)
   }
+
+  if (fetching) return (
+    <div className="min-h-dvh flex items-center justify-center bg-surface">
+      <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+
+  if (notFound) return (
+    <div className="min-h-dvh bg-surface flex items-center justify-center px-4">
+      <div className="text-center">
+        <p className="text-5xl mb-4">🔍</p>
+        <h1 className="font-display text-xl font-bold text-white mb-2">Cotización no encontrada</h1>
+        <p className="text-muted">El link puede haber expirado o ser incorrecto.</p>
+      </div>
+    </div>
+  )
+
+  if (!quote) return null
 
   if (status === 'paid') return (
     <div className="min-h-dvh bg-surface flex items-center justify-center px-4">
@@ -74,7 +113,6 @@ export default function PublicQuoteClient({ quote }: { quote: Quote }) {
 
   return (
     <div className="min-h-dvh bg-surface">
-      {/* Header */}
       <div className="bg-gradient-to-br from-primary-600 to-primary-800 px-4 pt-12 pb-8">
         <div className="flex items-center gap-3 max-w-sm mx-auto">
           <div className="bg-white/20 rounded-xl p-2.5">
@@ -88,7 +126,6 @@ export default function PublicQuoteClient({ quote }: { quote: Quote }) {
       </div>
 
       <div className="max-w-sm mx-auto px-4 py-6 space-y-4">
-        {/* Quote header */}
         <div className="card">
           <p className="text-xs text-muted mb-1">Cotización para</p>
           <p className="font-bold text-white text-lg">{quote.client?.name}</p>
@@ -96,7 +133,6 @@ export default function PublicQuoteClient({ quote }: { quote: Quote }) {
           {quote.description && <p className="text-sm text-muted mt-2">{quote.description}</p>}
         </div>
 
-        {/* Items */}
         <div className="card">
           <p className="text-xs text-muted font-medium mb-3">Detalle del trabajo</p>
           <div className="space-y-2">
@@ -127,7 +163,6 @@ export default function PublicQuoteClient({ quote }: { quote: Quote }) {
           )}
         </div>
 
-        {/* Actions */}
         {status === 'pending' && (
           <div className="space-y-3">
             <button onClick={handleAccept} disabled={loading}
@@ -154,7 +189,6 @@ export default function PublicQuoteClient({ quote }: { quote: Quote }) {
           </div>
         )}
 
-        {/* Contact */}
         <div className="card text-center">
           <p className="text-xs text-muted mb-1">¿Preguntas?</p>
           <a href={`https://wa.me/${quote.profile?.phone?.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer"
