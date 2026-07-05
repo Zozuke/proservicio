@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { loadStripe } from '@stripe/stripe-js'
 import { CheckCircle, XCircle, Wrench } from 'lucide-react'
@@ -16,6 +17,8 @@ type Quote = {
 }
 
 export default function PublicQuoteClient({ token }: { token: string }) {
+  const searchParams = useSearchParams()
+  const justPaid = searchParams.get('paid') === '1'
   const [quote, setQuote] = useState<Quote | null>(null)
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(false)
@@ -62,9 +65,10 @@ export default function PublicQuoteClient({ token }: { token: string }) {
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quoteId: quote.id, amount: Math.round(quote.total * 100), title: quote.title }),
+        body: JSON.stringify({ quoteId: quote.id }),
       })
-      const { sessionId } = await res.json()
+      const { sessionId, error } = await res.json()
+      if (error || !sessionId) throw new Error(error || 'no session')
       const stripe = await stripePromise
       await stripe?.redirectToCheckout({ sessionId })
     } catch {
@@ -178,9 +182,17 @@ export default function PublicQuoteClient({ token }: { token: string }) {
 
         {status === 'accepted' && (
           <div className="space-y-3">
-            <div className="card bg-green-500/10 border-green-500/30 text-center py-3">
-              <p className="text-green-400 font-medium text-sm">✓ Cotización aceptada</p>
-            </div>
+            {justPaid ? (
+              <div className="card bg-yellow-500/10 border-yellow-500/30 text-center py-3">
+                <p className="text-yellow-400 font-medium text-sm">
+                  Estamos confirmando tu pago. Si pagaste con OXXO puede tardar hasta que se acredite el voucher.
+                </p>
+              </div>
+            ) : (
+              <div className="card bg-green-500/10 border-green-500/30 text-center py-3">
+                <p className="text-green-400 font-medium text-sm">✓ Cotización aceptada</p>
+              </div>
+            )}
             <button onClick={handlePay} disabled={loading}
               className="btn-primary flex items-center justify-center gap-2">
               💳 {loading ? 'Procesando...' : `Pagar ${fmt(quote.total)}`}

@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import PublicQuoteClient from './PublicQuoteClient'
 
 export default async function PublicQuotePage({
@@ -5,5 +6,9 @@ export default async function PublicQuotePage({
 }: {
   params: { token: string }
 }) {
-  return <PublicQuoteClient token={params.token} />
+  return (
+    <Suspense fallback={null}>
+      <PublicQuoteClient token={params.token} />
+    </Suspense>
+  )
 }
