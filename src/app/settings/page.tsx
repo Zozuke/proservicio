@@ -19,6 +19,8 @@ export default function SettingsPage() {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({ full_name: '', business_name: '', trade: '', phone: '', city: '' })
   const [saving, setSaving] = useState(false)
+  const [stripeStatus, setStripeStatus] = useState<'none' | 'pending' | 'connected'>('none')
+  const [connecting, setConnecting] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -27,7 +29,29 @@ export default function SettingsPage() {
         setProfile(data)
         if (data) setForm({ full_name: data.full_name, business_name: data.business_name, trade: data.trade, phone: data.phone, city: data.city || '' })
       })
+    fetch(`/api/stripe/connect?userId=${user.id}`)
+      .then(res => res.json())
+      .then(({ connected, pending }) => setStripeStatus(connected ? 'connected' : pending ? 'pending' : 'none'))
+      .catch(() => {})
   }, [user])
+
+  const handleConnectStripe = async () => {
+    if (!user) return
+    setConnecting(true)
+    try {
+      const res = await fetch('/api/stripe/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id }),
+      })
+      const { url, error } = await res.json()
+      if (error || !url) throw new Error(error)
+      window.location.href = url
+    } catch {
+      toast.error(t('stripe_connect_error'))
+      setConnecting(false)
+    }
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -109,23 +133,25 @@ export default function SettingsPage() {
         </div>
 
         {/* Stripe */}
-        <div className="card mb-3">
+        <button
+          onClick={stripeStatus !== 'connected' ? handleConnectStripe : undefined}
+          disabled={connecting}
+          className="card mb-3 w-full text-left">
           <div className="flex items-center gap-3">
             <CreditCard className="w-5 h-5 text-primary-400" />
             <div className="flex-1">
               <p className="font-medium text-white">{t('payments')}</p>
-              <p className="text-sm text-muted">
-                {profile?.stripe_account_id ? t('stripe_connected') : t('connect_stripe')}
+              <p className={`text-sm ${stripeStatus === 'connected' ? 'text-green-400' : stripeStatus === 'pending' ? 'text-yellow-400' : 'text-muted'}`}>
+                {connecting
+                  ? '...'
+                  : stripeStatus === 'connected' ? t('stripe_connected')
+                  : stripeStatus === 'pending' ? t('stripe_pending')
+                  : t('connect_stripe')}
               </p>
             </div>
-            {!profile?.stripe_account_id && <ChevronRight className="w-4 h-4 text-muted" />}
+            {stripeStatus !== 'connected' && <ChevronRight className="w-4 h-4 text-muted" />}
           </div>
-          {!profile?.stripe_account_id && (
-            <p className="text-xs text-muted mt-3">
-              Conecta tu cuenta de Stripe para recibir pagos. Configura las variables de entorno STRIPE_SECRET_KEY en tu panel de Vercel.
-            </p>
-          )}
-        </div>
+        </button>
 
         {/* Email */}
         <div className="card mb-6">
