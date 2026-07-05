@@ -12,7 +12,7 @@ export default function HomePage() {
   const { user, loading } = useAuth()
   const { t } = useLang()
   const router = useRouter()
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -21,6 +21,7 @@ export default function HomePage() {
   const [phone, setPhone] = useState('')
   const [city, setCity] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
   useEffect(() => {
     if (!loading && user) router.replace('/dashboard')
@@ -59,6 +60,17 @@ if (error) {
     setSubmitting(false)
   }
 
+  const handleForgotPassword = async () => {
+    if (!email) return toast.error(t('fill_all'))
+    setSubmitting(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    if (error) toast.error(error.message)
+    else setResetSent(true)
+    setSubmitting(false)
+  }
+
   if (loading) return (
     <div className="min-h-dvh flex items-center justify-center bg-surface">
       <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
@@ -82,17 +94,42 @@ if (error) {
       <div className="flex-1 px-4 -mt-6">
         <div className="card max-w-sm mx-auto">
           {/* Tabs */}
-          <div className="flex bg-surface rounded-xl p-1 mb-6">
-            <button onClick={() => setMode('login')}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'login' ? 'bg-primary-500 text-white' : 'text-muted'}`}>
-              {t('login')}
-            </button>
-            <button onClick={() => setMode('register')}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'register' ? 'bg-primary-500 text-white' : 'text-muted'}`}>
-              {t('register')}
-            </button>
-          </div>
+          {mode !== 'forgot' && (
+            <div className="flex bg-surface rounded-xl p-1 mb-6">
+              <button onClick={() => setMode('login')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'login' ? 'bg-primary-500 text-white' : 'text-muted'}`}>
+                {t('login')}
+              </button>
+              <button onClick={() => setMode('register')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'register' ? 'bg-primary-500 text-white' : 'text-muted'}`}>
+                {t('register')}
+              </button>
+            </div>
+          )}
 
+          {mode === 'forgot' ? (
+            resetSent ? (
+              <div className="space-y-4 text-center">
+                <p className="text-sm text-muted">{t('reset_link_sent')}</p>
+                <button className="btn-secondary" onClick={() => { setMode('login'); setResetSent(false) }}>
+                  {t('back_to_login')}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label>{t('email')}</label>
+                  <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="juan@email.com" />
+                </div>
+                <button className="btn-primary mt-2" onClick={handleForgotPassword} disabled={submitting}>
+                  {submitting ? '...' : t('send_reset_link')}
+                </button>
+                <button className="text-primary-400 text-sm font-medium w-full text-center" onClick={() => setMode('login')}>
+                  {t('back_to_login')}
+                </button>
+              </div>
+            )
+          ) : (
           <div className="space-y-4">
             {mode === 'register' && (
               <>
@@ -126,6 +163,11 @@ if (error) {
               <label>{t('password')}</label>
               <input value={password} onChange={e => setPassword(e.target.value)} type="password" placeholder="••••••••" />
             </div>
+            {mode === 'login' && (
+              <button className="text-primary-400 text-sm font-medium -mt-2 text-right w-full" onClick={() => setMode('forgot')}>
+                {t('forgot_password')}
+              </button>
+            )}
             <button
               className="btn-primary mt-2"
               onClick={mode === 'login' ? handleLogin : handleRegister}
@@ -133,6 +175,7 @@ if (error) {
               {submitting ? '...' : mode === 'login' ? t('login') : t('register')}
             </button>
           </div>
+          )}
         </div>
 
         {/* Value props */}
