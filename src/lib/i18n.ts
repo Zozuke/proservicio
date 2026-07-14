@@ -31,7 +31,7 @@ export const translations = {
     new_quote: 'Nueva cotización',
     quote_title: 'Título del trabajo',
     quote_desc: 'Descripción',
-    add_item: 'Agregar + trabajo',
+    add_item: 'Agregar trabajo',
     item_desc: '¿Qué trabajo o servicio vas a realizar?',
     quantity: 'Cantidad',
     unit_price: 'Precio unitario',
