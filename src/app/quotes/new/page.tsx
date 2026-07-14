@@ -106,7 +106,7 @@ export default function NewQuotePage() {
           {/* Items */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="mb-0">Ítems del trabajo</label>
+              <label className="mb-0">nombres de trabajo</label>
               <button onClick={addItem} className="flex items-center gap-1 text-primary-400 text-sm">
                 <Plus className="w-4 h-4" /> {t('add_item')}
               </button>
@@ -116,7 +116,7 @@ export default function NewQuotePage() {
               {items.map((item, idx) => (
                 <div key={item.id} className="card">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-muted font-medium">Ítem {idx + 1}</span>
+                    <span className="text-xs text-muted font-medium">trabajo {idx + 1}</span>
                     {items.length > 1 && (
                       <button onClick={() => removeItem(item.id)} className="text-red-400">
                         <Trash2 className="w-4 h-4" />
